@@ -46,9 +46,7 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
   const [coordError, setCoordError] = useState("");
   const pdfAreaRef = useRef(null);
   const [fontFamily, setFontFamily] = useState('inherit');
-  const [signMode, setSignMode] = useState('single'); // 'single' or 'multi'
-  const [multiSignEmail, setMultiSignEmail] = useState('');
-  const [multiSignStatus, setMultiSignStatus] = useState('');
+  const [fontSize, setFontSize] = useState(24); // New state for font size
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: SIGNATURE_DND_TYPE,
@@ -150,7 +148,7 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
         page.drawText(sigData.value, {
           x: pdfX,
           y: pdfY,
-          size: 24,
+          size: fontSize, // Use fontSize state
           color: rgb(0, 0, 0),
           font,
         });
@@ -364,9 +362,23 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
                       onChange={e => setSignature(e.target.value)}
                       placeholder="Enter your signature"
                     />
+                    {/* Font size slider */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', width: '100%', maxWidth: 520 }}>
+                      <label htmlFor="font-size-slider" style={{ fontWeight: 500, color: '#334155', fontSize: '1.1rem', minWidth: 70 }}>Font Size:</label>
+                      <input
+                        id="font-size-slider"
+                        type="range"
+                        min={12}
+                        max={64}
+                        value={fontSize}
+                        onChange={e => setFontSize(Number(e.target.value))}
+                        style={{ flex: 1 }}
+                      />
+                      <span style={{ minWidth: 32, textAlign: 'right', color: '#334155', fontWeight: 500 }}>{fontSize}px</span>
+                    </div>
                     {/* Font label and dropdown below input */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem', width: '100%', maxWidth: 520 }}>
-                      <label htmlFor="font-select" style={{ fontWeight: 500, color: '#334155', fontSize: '1.1 rem', minWidth: 48 }}>Font:</label>
+                      <label htmlFor="font-select" style={{ fontWeight: 500, color: '#334155', fontSize: '1.1rem', minWidth: 48 }}>Font:</label>
                       <select
                         id="font-select"
                         value={fontFamily}
@@ -394,7 +406,7 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
                     {signature && (
                       <div style={{
                         marginTop: '0.5rem',
-                        fontSize: '1rem',
+                        fontSize: fontSize,
                         fontFamily,
                         color: '#3b82f6',
                         fontWeight: 600,
@@ -457,55 +469,6 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
                     </div>
                   </div>
                 )}
-                {/* User dropdown for sign mode - spread out horizontally */}
-                <div style={{ marginTop: '1.5rem', marginBottom: '1rem', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-                  <label htmlFor="user-sign-mode" style={{ fontWeight: 600, color: '#334155', marginRight: 8, minWidth: 60, flex: '0 0 auto' }}>User</label>
-                  <select
-                    id="user-sign-mode"
-                    value={signMode}
-                    onChange={e => setSignMode(e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: '0.375rem', border: '1.5px solid #3b82f6', fontSize: '1rem', background: '#fff', color: '#18181b', minWidth: 200, flex: '1 1 auto' }}
-                  >
-                    <option value="single">Single User Sign</option>
-                    <option value="multi">Multi User Sign</option>
-                  </select>
-                </div>
-                {/* Email input for multi user sign - move here */}
-                {signMode === 'multi' && (
-                  <div style={{ width: '100%', marginBottom: '1rem', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '1rem' }}>
-                    <input
-                      type="email"
-                      placeholder="Enter signer's email"
-                      value={multiSignEmail}
-                      onChange={e => setMultiSignEmail(e.target.value)}
-                      style={{ flex: 1, maxWidth: 260, padding: '0.5rem', borderRadius: '0.375rem', border: '1.5px solid #3b82f6', fontSize: '1rem', background: '#fff', color: '#18181b' }}
-                    />
-                    <button
-                      style={{ background: '#3b82f6', color: '#fff', padding: '0.5rem 1.5rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}
-                      onClick={async e => {
-                        e.preventDefault();
-                        setMultiSignStatus('Sending...');
-                        try {
-                          const token = localStorage.getItem('token');
-                          await axios.post('/api/signatures/public-link', {
-                            documentId: doc._id || doc.id,
-                            email: multiSignEmail
-                          }, {
-                            headers: { Authorization: `Bearer ${token}` }
-                          });
-                          setMultiSignStatus('');
-                          setMultiSignEmail('');
-                          alert('Email sent!');
-                        } catch (err) {
-                          setMultiSignStatus('Failed to send: ' + (err.response?.data?.message || 'Error'));
-                        }
-                      }}
-                      disabled={!multiSignEmail}
-                    >
-                      Send Signature Link
-                    </button>
-                  </div>
-                )}
                 {/* Coordinates section */}
                 <div style={{ width: '100%', padding: '0.5rem 1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', background: '#fff', borderTop: '1px solid #e5e7eb', marginTop: '1rem', color: '#334155' }}>
                   <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>Enter coordinates:</span>
@@ -541,24 +504,23 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
                 >
                   Place Signature
                 </button>
+                {/* Download and Clear buttons side by side, now below Place Signature */}
+                <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem', justifyContent: 'center', alignItems: 'center', marginTop: '1rem' }}>
+                  <button
+                    style={{ background: '#3b82f6', color: '#fff', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
+                    onClick={e => { e.preventDefault(); handleDownload(); }}
+                  >
+                    Download Signed PDF
+                  </button>
+                  <button
+                    style={{ background: '#e5e7eb', color: '#334155', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
+                    onClick={e => { e.preventDefault(); handleClear(); }}
+                  >
+                    Clear
+                  </button>
+                </div>
                 {/* Conditional rendering based on signMode */}
-                {signMode === 'single' && (
-                  <div style={{ display: 'flex', flexDirection: 'row', gap: '1.5rem', justifyContent: 'center', alignItems: 'center', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
-                    <button
-                      style={{ background: '#3b82f6', color: '#fff', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
-                      onClick={e => { e.preventDefault(); handleDownload(); }}
-                    >
-                      Download Signed PDF
-                    </button>
-                    <button
-                      style={{ background: '#e5e7eb', color: '#334155', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
-                      onClick={e => { e.preventDefault(); handleClear(); }}
-                    >
-                      Clear
-                    </button>
-                  </div>
-                )}
-                {multiSignStatus && multiSignStatus !== 'Sending...' && <div style={{ color: '#f43f5e', fontWeight: 500, marginTop: 4 }}>{multiSignStatus}</div>}
+                {/* Removed user dropdown and email input */}
               </div>
             </form>
           </div>
