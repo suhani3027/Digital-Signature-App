@@ -4,7 +4,6 @@ import SignatureModal from '../components/SignatureModal';
 import axios from 'axios';
 import CenteredPage from '../components/CenteredPage';
 
-const backendUrl = 'http://localhost:5000';
 
 const SignDocument = () => {
   const { documentId } = useParams();

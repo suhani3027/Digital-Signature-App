@@ -7,9 +7,12 @@ const Navbar = () => {
   const navigate = useNavigate();
   const isAuthenticated = !!localStorage.getItem('token');
   const userId = localStorage.getItem('userId');
+  const userName = localStorage.getItem('userName');
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userName');
     navigate('/login');
   };
 
@@ -22,9 +25,11 @@ const Navbar = () => {
         <Link to="/documents" style={{ textDecoration: 'none', color: '#6366f1', fontSize: '1rem', fontWeight: 500 }}>Document List</Link>
       </div>
       <div style={{ display: 'flex', alignItems: 'center' }}>
-        {userId && (
-          <span style={{ color: '#334155', fontWeight: 500, marginRight: '1rem' }}>hi, {userId}</span>
-        )}
+        {userName ? (
+          <span style={{ color: 'black', fontWeight: 500, marginRight: '1rem', fontSize: '1.1rem' }}>hi, {userName}</span>
+        ) : userId ? (
+          <span style={{ color: 'black', fontWeight: 500, marginRight: '1rem', fontSize: '1.1rem' }}>hi, User</span>
+        ) : null}
         {isAuthenticated && (
           <img
             src={logoutImg}

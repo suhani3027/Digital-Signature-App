@@ -4,4 +4,3 @@ export { default as Dashboard } from './Dashboard';
 export { default as UploadDocument } from './UploadDocument';
 export { default as DocumentList } from './DocumentList';
 export { default as SignDocument } from './SignDocument';
-export { default as ExternalSign } from './ExternalSign.jsx';

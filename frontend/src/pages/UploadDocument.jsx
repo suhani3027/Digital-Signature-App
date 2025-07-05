@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Document, Page, pdfjs } from 'react-pdf';
+import { pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import CenteredPage from '../components/CenteredPage';
-
+import { getApiUrl } from '../utils/env.js';
 
 // Set the workerSrc to the recommended CDN for react-pdf
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
-
-const backendUrl = 'http://localhost:5000';
 
 // Helper to get robust PDF URL
 // const getPdfUrl = (filePath) => {
@@ -22,7 +20,7 @@ const backendUrl = 'http://localhost:5000';
 const getPdfUrl = (filePath) => {
   if (!filePath) return '';
   const fileName = filePath.split(/[/\\]/).pop();
-  return `${backendUrl}/uploads/${fileName}`;
+  return getApiUrl(`uploads/${fileName}`);
 };
 
 const UploadDocument = () => {

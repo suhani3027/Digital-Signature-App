@@ -1,33 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Document, Page, pdfjs } from 'react-pdf';
-import SignatureModal from '../components/SignatureModal';
+import {pdfjs } from 'react-pdf';
+//import SignatureModal from '../components/SignatureModal';
 import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import CenteredPage from '../components/CenteredPage';
 import { useNavigate } from 'react-router-dom';
-import { FaFileAlt, FaFileSignature, FaFileUpload } from 'react-icons/fa';
+import { FaFileAlt, FaFileSignature, FaFileUpload, FaTrash } from 'react-icons/fa';
 
 // Set the workerSrc to the recommended CDN for react-pdf
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
-const statusColors = {
-  draft: '#fef3c7', // yellow-100
-  signed: '#d1fae5', // green-100
-  pending: '#fef3c7',
-  completed: '#dbeafe',
-  expired: '#fee2e2',
-};
-
-const backendUrl = 'http://localhost:5000';
-
-// Hardcoded approach for testing:
-// const hardcodedPdfUrl = 'http://localhost:5000/uploads/sample.pdf';
-// Restore original getPdfUrl logic
-const getPdfUrl = (filePath) => {
-  if (!filePath) return '';
-  const fileName = filePath.split(/[/\\]/).pop();
-  return `${backendUrl}/uploads/${fileName}`;
-};
 
 const CARD_TYPES = [
   { key: 'total', label: 'Total Documents', icon: <FaFileAlt size={28} color="#3b82f6" />, color: '#e0edff' },
@@ -40,10 +22,6 @@ const DocumentList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedType, setSelectedType] = useState('total');
-  const [previewDocId, setPreviewDocId] = useState(null);
-  const [signModalDoc, setSignModalDoc] = useState(null);
-  const [previewPage, setPreviewPage] = useState(1);
-  const [previewNumPages, setPreviewNumPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
@@ -63,32 +41,28 @@ const DocumentList = () => {
     }
   };
 
+  const handleDelete = async (documentId) => {
+    if (!window.confirm('Are you sure you want to delete this document? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(`/api/documents/${documentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      // Remove the document from the local state
+      setDocuments(documents.filter(doc => (doc.id || doc._id) !== documentId));
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to delete document');
+    }
+  };
+
   useEffect(() => {
     fetchDocuments();
   }, []);
 
-  const handleSaveSignature = async ({ documentId, signature, position, page }) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.post('/api/signatures', {
-        documentId,
-        email: '', // You can fill this with the user's email if needed
-        name: signature,
-        position: { x: position.x, y: position.y, page },
-        signatureContent: signature,
-        signatureType: 'text',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-      }, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      // Refresh the document list after signing
-      await fetchDocuments();
-    } catch (err) {
-      alert('Failed to save signature.');
-    }
-  };
 
   const totalDocs = documents.length;
   const signedDocs = documents.filter(doc => doc.status === 'signed').length;
@@ -120,6 +94,7 @@ const DocumentList = () => {
           .dl-summary-cards { flex-direction: column !important; gap: 1rem !important; }
           .dl-search-bar { max-width: 100vw !important; }
           .dl-doc-card { flex-direction: column !important; align-items: flex-start !important; gap: 12px !important; padding: 1rem 0.75rem !important; }
+          .dl-doc-card .dl-buttons { width: 100% !important; justify-content: flex-start !important; }
         }
       `}</style>
       <div className="dl-main-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '2rem 0', maxWidth: 900, margin: '0 auto' }}>
@@ -195,13 +170,26 @@ const DocumentList = () => {
                 <div style={{ color: '#334155', fontWeight: 500, marginTop: 4 }}>Status: <span style={{ color: '#3b82f6', fontWeight: 600 }}>{doc.status}</span></div>
                 <div style={{ color: '#334155', fontSize: '0.95rem', marginTop: 2 }}>Uploaded: {new Date(doc.createdAt).toLocaleString()}</div>
               </div>
-                      <button
-                style={{ background: '#3b82f6', color: '#fff', padding: '0.5rem 1.5rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1rem', cursor: 'pointer' }}
-                        onClick={() => navigate(`/sign/${doc.id || doc._id}`)}
-                      >
-                        Sign
-                      </button>
-                          </div>
+              <div className="dl-buttons" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                <button
+                  style={{ background: '#3b82f6', color: '#fff', padding: '0.5rem 1.5rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', transition: 'background 0.2s' }}
+                  onMouseOver={e => e.currentTarget.style.background = '#2563eb'}
+                  onMouseOut={e => e.currentTarget.style.background = '#3b82f6'}
+                  onClick={() => navigate(`/sign/${doc.id || doc._id}`)}
+                >
+                  Sign
+                </button>
+                <button
+                  style={{ background: '#ef4444', color: '#fff', padding: '0.5rem 1rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', transition: 'background 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  onMouseOver={e => e.currentTarget.style.background = '#dc2626'}
+                  onMouseOut={e => e.currentTarget.style.background = '#ef4444'}
+                  onClick={() => handleDelete(doc.id || doc._id)}
+                >
+                  <FaTrash size={14} />
+                  Delete
+                </button>
+              </div>
+            </div>
           ))}
                         </div>
       </div>
@@ -209,4 +197,4 @@ const DocumentList = () => {
   );
 };
 
-export default DocumentList; 
+export default DocumentList;

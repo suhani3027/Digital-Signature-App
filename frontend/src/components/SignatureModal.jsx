@@ -6,10 +6,9 @@ import { pdfjs } from 'react-pdf';
 import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { useDrag, useDrop, useDragLayer } from 'react-dnd';
-import axios from 'axios';
+import { getApiUrl } from '../utils/env.js';
+//import axios from 'axios';
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
-
-const backendUrl = 'http://localhost:5000';
 
 const SIGNATURE_TYPES = {
   TEXT: 'Text',
@@ -19,9 +18,6 @@ const SIGNATURE_TYPES = {
 
 const SIGNATURE_DND_TYPE = 'SIGNATURE_OVERLAY';
 
-const gridSize = 10;
-const snapToGrid = (x, y) => [Math.round(x / gridSize) * gridSize, Math.round(y / gridSize) * gridSize];
-
 const fontOptions = [
   { label: 'Default', value: 'inherit', pdfFont: StandardFonts.Helvetica },
   { label: 'Cursive', value: 'cursive', pdfFont: StandardFonts.Courier },
@@ -29,14 +25,13 @@ const fontOptions = [
   { label: 'Sans-serif', value: 'sans-serif', pdfFont: StandardFonts.Helvetica },
 ];
 
-const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
+const SignatureModal = ({ open, document: doc }) => {
   const [signatureType, setSignatureType] = useState("");
   const [signature, setSignature] = useState(''); // For text
   const [drawnSignature, setDrawnSignature] = useState(null); // For drawn
   const [uploadedSignature, setUploadedSignature] = useState(null); // For upload
   const [position, setPosition] = useState({ x: 100, y: 100 });
   const [showSignature, setShowSignature] = useState(false);
-  const nodeRef = useRef(null);
   const sigCanvasRef = useRef(null);
   const [isDrawn, setIsDrawn] = useState(false); // Track if user has drawn
   const [numPages, setNumPages] = useState(null);
@@ -58,7 +53,7 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
 
   const [, drop] = useDrop(() => ({
     accept: SIGNATURE_DND_TYPE,
-    drop: (item, monitor) => {
+    drop: (monitor) => {
       const clientOffset = monitor.getClientOffset();
       const dropArea = pdfAreaRef.current;
       if (clientOffset && dropArea) {
@@ -95,10 +90,6 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
 
   if (!open || !doc) return null;
 
-  const handleDrag = (e, data) => {
-    setPosition({ x: data.x, y: data.y });
-  };
-
   const handleClear = () => {
     setSignature('');
     setDrawnSignature(null);
@@ -126,7 +117,7 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
 
     try {
       // 1. Fetch the original PDF as ArrayBuffer
-      const pdfUrl = doc.filePath.startsWith('http') ? doc.filePath : `${backendUrl}/uploads/${doc.fileName || doc.filePath.split(/[/\\]/).pop()}`;
+      const pdfUrl = doc.filePath.startsWith('http') ? doc.filePath : getApiUrl(`uploads/${doc.fileName || doc.filePath.split(/[/\\]/).pop()}`);
       const pdfBytes = await fetch(pdfUrl).then(res => res.arrayBuffer());
       const pdfDoc = await PDFDocument.load(pdfBytes);
       const page = pdfDoc.getPage(currentPage - 1);
@@ -209,13 +200,10 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
     }
   }, [pendingShowDrawn, drawnSignature]);
 
-  // Hardcoded approach for testing:
-  // const hardcodedPdfUrl = 'http://localhost:5000/uploads/sample.pdf';
-  // Restore original pdfUrl logic
   let pdfUrl = '';
   if (doc && doc.filePath) {
     let fileName = doc.filePath.split(/[/\\]/).pop();
-    pdfUrl = `${backendUrl}/uploads/${fileName}`;
+    pdfUrl = getApiUrl(`uploads/${fileName}`);
   }
 
   const onDocumentLoadSuccess = ({ numPages }) => {
@@ -253,7 +241,6 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
               boxShadow: '0 4px 24px rgba(0,0,0,0.10)',
               width: 450,
               height: 'auto',
-              
               overflowX: 'hidden',
               display: 'flex',
               flexDirection: 'column',
@@ -309,7 +296,6 @@ const SignatureModal = ({ open, onClose, document: doc, onSave, saving }) => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    
                   }}>
                     {signature && <span>{signature}</span>}
                     {drawnSignature && <img src={drawnSignature} alt="Drawn signature" style={{ display: 'block', margin: '0 auto', maxWidth: 120, maxHeight: 60 }} />}
