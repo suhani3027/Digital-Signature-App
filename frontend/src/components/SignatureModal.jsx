@@ -100,9 +100,7 @@ const SignatureModal = ({ open, document: doc }) => {
     if (sigCanvasRef.current) sigCanvasRef.current.clear();
   };
 
-  const handleResetPosition = () => {
-    setPosition({ x: 100, y: 100 });
-  };
+
 
   const handleDraw = () => {
     setIsDrawn(true);
@@ -511,7 +509,7 @@ const SignatureModal = ({ open, document: doc }) => {
                 >
                   Place Signature
                 </button>
-                {/* Download, Clear, and Reset Position buttons side by side */}
+                {/* Download and Clear buttons side by side */}
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem', justifyContent: 'center', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
                   <button
                     style={{ background: '#3b82f6', color: '#fff', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
@@ -524,12 +522,6 @@ const SignatureModal = ({ open, document: doc }) => {
                     onClick={e => { e.preventDefault(); handleClear(); }}
                   >
                     Clear
-                  </button>
-                  <button
-                    style={{ background: '#f59e0b', color: '#fff', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
-                    onClick={e => { e.preventDefault(); handleResetPosition(); }}
-                  >
-                    Reset Position
                   </button>
                 </div>
                 {/* Conditional rendering based on signMode */}
