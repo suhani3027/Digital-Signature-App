@@ -53,9 +53,10 @@ const SignatureModal = ({ open, document: doc }) => {
 
   const [, drop] = useDrop({
     accept: SIGNATURE_DND_TYPE,
-    drop: (item, monitor) => {
+    drop: (_item, monitor) => {
       const clientOffset = monitor.getClientOffset();
       const dropArea = pdfAreaRef.current;
+      console.log('Drop handler fired!', { clientOffset, dropArea });
       if (clientOffset && dropArea) {
         const rect = dropArea.getBoundingClientRect();
         let x = clientOffset.x - rect.left;
