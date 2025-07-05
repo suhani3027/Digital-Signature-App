@@ -7,6 +7,7 @@ import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { useDrag, useDrop, useDragLayer } from 'react-dnd';
 import { getApiUrl } from '../utils/env.js';
+import axios from 'axios';
 //import axios from 'axios';
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
@@ -25,7 +26,7 @@ const fontOptions = [
   { label: 'Sans-serif', value: 'sans-serif', pdfFont: StandardFonts.Helvetica },
 ];
 
-const SignatureModal = ({ open, document: doc }) => {
+const SignatureModal = ({ open, document: doc, onSave }) => {
   const [signatureType, setSignatureType] = useState("");
   const [signature, setSignature] = useState(''); // For text
   const [drawnSignature, setDrawnSignature] = useState(null); // For drawn
@@ -42,6 +43,7 @@ const SignatureModal = ({ open, document: doc }) => {
   const pdfAreaRef = useRef(null);
   const [fontFamily, setFontFamily] = useState('inherit');
   const [fontSize, setFontSize] = useState(24); // New state for font size
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: SIGNATURE_DND_TYPE,
@@ -61,10 +63,29 @@ const SignatureModal = ({ open, document: doc }) => {
         const rect = dropArea.getBoundingClientRect();
         let x = clientOffset.x - rect.left;
         let y = clientOffset.y - rect.top;
-        // Clamp to bounds
-        x = Math.max(0, Math.min(x, rect.width - 80));
-        y = Math.max(0, Math.min(y, rect.height - 40));
-        setPosition({ x, y });
+        
+        // Account for any scrolling
+        const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        
+        // Adjust for scroll position
+        x = x + scrollLeft;
+        y = y + scrollTop;
+        
+        // Clamp to bounds with better calculations
+        const maxX = Math.max(0, rect.width - 120); // Account for signature width
+        const maxY = Math.max(0, rect.height - 60);  // Account for signature height
+        
+        x = Math.max(0, Math.min(x, maxX));
+        y = Math.max(0, Math.min(y, maxY));
+        
+        // Snap to grid for more precise positioning
+        const gridSize = 10;
+        const snappedX = Math.round(x / gridSize) * gridSize;
+        const snappedY = Math.round(y / gridSize) * gridSize;
+        
+        console.log('New position:', { x: snappedX, y: snappedY, rect, clientOffset });
+        setPosition({ x: snappedX, y: snappedY });
       }
     },
   });
@@ -72,7 +93,7 @@ const SignatureModal = ({ open, document: doc }) => {
   // Custom drag layer for preview
   const { isDragging: isLayerDragging, currentOffset } = useDragLayer((monitor) => ({
     isDragging: monitor.isDragging(),
-    currentOffset: monitor.getSourceClientOffset(),
+    currentOffset: monitor.getClientOffset(),
   }));
 
   // Dropzone for image upload
@@ -177,6 +198,27 @@ const SignatureModal = ({ open, document: doc }) => {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      
+      // 4. Update document status to 'signed'
+      setIsUpdatingStatus(true);
+      try {
+        const token = localStorage.getItem('token');
+        await axios.put(getApiUrl(`api/documents/${doc._id || doc.id}`), 
+          { status: 'signed' },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        
+        // Call onSave callback if provided
+        if (onSave) {
+          onSave();
+        }
+      } catch (error) {
+        console.error('Failed to update document status:', error);
+        alert('PDF signed and downloaded successfully, but failed to update document status.');
+      } finally {
+        setIsUpdatingStatus(false);
+      }
+      
       handleClear();
     } catch (err) {
       alert('Failed to generate signed PDF.');
@@ -218,8 +260,8 @@ const SignatureModal = ({ open, document: doc }) => {
   useEffect(() => {
     const minX = 0;
     const minY = 0;
-    const maxX = 600; // match renderWidth
-    const maxY = renderedHeight || 600; // match renderHeight
+    const maxX = Math.max(0, 500 - 120); // PDF width minus signature width
+    const maxY = Math.max(0, (renderedHeight || 600) - 60); // PDF height minus signature height
     if (position.x < minX || position.x > maxX || position.y < minY || position.y > maxY) {
       setCoordError(`Coordinates must be between X: ${minX}-${maxX}, Y: ${minY}-${maxY}`);
     } else {
@@ -261,7 +303,38 @@ const SignatureModal = ({ open, document: doc }) => {
               margin: 0,
               padding: '8px 0 0 0',
             }}>
-              <div ref={node => { drop(node); pdfAreaRef.current = node; }} style={{ width: 500, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              <div 
+                ref={node => { drop(node); pdfAreaRef.current = node; }} 
+                style={{ 
+                  width: 500, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  position: 'relative',
+                  cursor: showSignature ? 'crosshair' : 'default'
+                }}
+                onClick={(e) => {
+                  if (showSignature) {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    // Clamp to bounds
+                    const maxX = Math.max(0, rect.width - 120);
+                    const maxY = Math.max(0, rect.height - 60);
+                    
+                    const clampedX = Math.max(0, Math.min(x, maxX));
+                    const clampedY = Math.max(0, Math.min(y, maxY));
+                    
+                    // Snap to grid (optional - makes positioning more precise)
+                    const gridSize = 10;
+                    const snappedX = Math.round(clampedX / gridSize) * gridSize;
+                    const snappedY = Math.round(clampedY / gridSize) * gridSize;
+                    
+                    setPosition({ x: snappedX, y: snappedY });
+                  }
+                }}
+              >
                 <Document file={pdfUrl} onLoadError={err => console.error('PDF load error:', err)} onLoadSuccess={page => {
                   // Calculate preview height based on PDF aspect ratio and preview width (500px)
                   const aspectRatio = page.height / page.width;
@@ -313,6 +386,43 @@ const SignatureModal = ({ open, document: doc }) => {
                     {uploadedSignature && <img src={uploadedSignature} alt="Uploaded signature" style={{ display: 'block', margin: '0 auto', maxWidth: 120, maxHeight: 60 }} />}
                   </div>
                 )}
+                
+                {/* Position instruction */}
+                {showSignature && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '10px',
+                    left: '10px',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    color: 'white',
+                    padding: '8px 12px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    zIndex: 5,
+                    pointerEvents: 'none'
+                  }}>
+                    💡 Drag signature or click to reposition
+                  </div>
+                )}
+                
+                {/* Position coordinates display */}
+                {showSignature && (
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '10px',
+                    right: '10px',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    color: 'white',
+                    padding: '6px 10px',
+                    borderRadius: '4px',
+                    fontSize: '11px',
+                    zIndex: 5,
+                    pointerEvents: 'none',
+                    fontFamily: 'monospace'
+                  }}>
+                    X: {position.x}, Y: {position.y}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -334,6 +444,7 @@ const SignatureModal = ({ open, document: doc }) => {
                   if (sigCanvasRef.current) sigCanvasRef.current.clear();
                 }}
                 style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '2px solid #3b82f6', fontSize: '1rem', marginBottom: '0.5rem', background: '#fff', color: '#18181b', boxSizing: 'border-box' }}
+                disabled={isUpdatingStatus}
               >
                 <option value="" disabled>Signature Type</option>
                 <option value={SIGNATURE_TYPES.TEXT}>Text</option>
@@ -367,6 +478,7 @@ const SignatureModal = ({ open, document: doc }) => {
                       value={signature}
                       onChange={e => setSignature(e.target.value)}
                       placeholder="Enter your signature"
+                      disabled={isUpdatingStatus}
                     />
                     {/* Font size slider */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem', width: '100%', maxWidth: 520 }}>
@@ -379,6 +491,7 @@ const SignatureModal = ({ open, document: doc }) => {
                         value={fontSize}
                         onChange={e => setFontSize(Number(e.target.value))}
                         style={{ flex: 1 }}
+                        disabled={isUpdatingStatus}
                       />
                       <span style={{ minWidth: 32, textAlign: 'right', color: '#334155', fontWeight: 500 }}>{fontSize}px</span>
                     </div>
@@ -402,6 +515,7 @@ const SignatureModal = ({ open, document: doc }) => {
                           fontFamily,
                           boxSizing: 'border-box',
                         }}
+                        disabled={isUpdatingStatus}
                       >
                         {fontOptions.map(opt => (
                           <option key={opt.value} value={opt.value} style={{ fontFamily: opt.value }}>{opt.label}</option>
@@ -445,6 +559,7 @@ const SignatureModal = ({ open, document: doc }) => {
                         backgroundColor="#fff"
                         canvasProps={{ width: 300, height: 100, style: { border: '1.5px solid #cbd5e1', borderRadius: '0.375rem', display: 'block', margin: '0 auto', background: '#fff' } }}
                         onEnd={handleDraw}
+                        disabled={isUpdatingStatus}
                       />
                       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 8, gap: '1rem' }}>
                         {drawnSignature && (
@@ -453,6 +568,7 @@ const SignatureModal = ({ open, document: doc }) => {
                         <button
                           style={{ background: '#e5e7eb', color: '#374151', padding: '0.5rem 1rem', borderRadius: '0.375rem', border: 'none', cursor: 'pointer', alignSelf: 'center' }}
                           onClick={() => { sigCanvasRef.current && sigCanvasRef.current.clear(); setIsDrawn(false); }}
+                          disabled={isUpdatingStatus}
                         >
                           Clear Drawing
                         </button>
@@ -465,8 +581,8 @@ const SignatureModal = ({ open, document: doc }) => {
                     <label style={{ fontWeight: 600, width: 'auto', whiteSpace: 'nowrap', marginBottom: 0 }}>
                       Upload your signature image:
                     </label>
-                    <div {...getRootProps()} style={{ border: '2px dashed #3b82f6', borderRadius: '0.375rem', padding: '1rem', width: '66%', textAlign: 'center', cursor: 'pointer', background: isDragActive ? '#e0edff' : '#fff', borderColor: isDragActive ? '#2563eb' : '#3b82f6', color: '#18181b' }}>
-                      <input {...getInputProps()} />
+                    <div {...getRootProps()} style={{ border: '2px dashed #3b82f6', borderRadius: '0.375rem', padding: '1rem', width: '66%', textAlign: 'center', cursor: isUpdatingStatus ? 'not-allowed' : 'pointer', background: isDragActive ? '#e0edff' : '#fff', borderColor: isDragActive ? '#2563eb' : '#3b82f6', color: '#18181b', opacity: isUpdatingStatus ? 0.6 : 1 }}>
+                      <input {...getInputProps()} disabled={isUpdatingStatus} />
                       {uploadedSignature ? (
                         <img src={uploadedSignature} alt="Uploaded signature" style={{ display: 'block', margin: '0 auto', maxHeight: 96 }} />
                       ) : (
@@ -483,10 +599,11 @@ const SignatureModal = ({ open, document: doc }) => {
                     <input
                       type="number"
                       min={0}
-                      max={400}
+                      max={Math.max(0, 500 - 120)}
                       value={position.x}
                       onChange={e => setPosition(pos => ({ ...pos, x: Number(e.target.value) }))}
                       style={{ width: 50, marginLeft: 2 }}
+                      disabled={isUpdatingStatus}
                     />
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
@@ -494,10 +611,11 @@ const SignatureModal = ({ open, document: doc }) => {
                     <input
                       type="number"
                       min={0}
-                      max={renderedHeight || 400}
+                      max={Math.max(0, (renderedHeight || 600) - 60)}
                       value={position.y}
                       onChange={e => setPosition(pos => ({ ...pos, y: Number(e.target.value) }))}
                       style={{ width: 50, marginLeft: 2 }}
+                      disabled={isUpdatingStatus}
                     />
                   </label>
                 </div>
@@ -505,22 +623,44 @@ const SignatureModal = ({ open, document: doc }) => {
                   <div style={{ color: 'red', fontWeight: 600, marginTop: 4, marginBottom: 4, textAlign: 'center' }}>{coordError}</div>
                 )}
                 <button
-                  style={{ background: '#3b82f6', color: '#fff', padding: '0.5rem 1.5rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1rem', cursor: 'pointer', marginTop: '1rem' }}
+                  style={{ 
+                    background: isUpdatingStatus ? '#9ca3af' : '#3b82f6', 
+                    color: '#fff', 
+                    padding: '0.5rem 1.5rem', 
+                    borderRadius: '0.5rem', 
+                    border: 'none', 
+                    fontWeight: 600, 
+                    fontSize: '1rem', 
+                    cursor: isUpdatingStatus ? 'not-allowed' : 'pointer', 
+                    marginTop: '1rem' 
+                  }}
                   onClick={e => { e.preventDefault(); handlePlaceSignature(); }}
+                  disabled={isUpdatingStatus}
                 >
                   Place Signature
                 </button>
                 {/* Download and Clear buttons side by side */}
                 <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem', justifyContent: 'center', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
                   <button
-                    style={{ background: '#3b82f6', color: '#fff', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
+                    style={{ 
+                      background: isUpdatingStatus ? '#9ca3af' : '#3b82f6', 
+                      color: '#fff', 
+                      padding: '0.75rem 2rem', 
+                      borderRadius: '0.5rem', 
+                      border: 'none', 
+                      fontWeight: 600, 
+                      fontSize: '1.1rem', 
+                      cursor: isUpdatingStatus ? 'not-allowed' : 'pointer' 
+                    }}
                     onClick={e => { e.preventDefault(); handleDownload(); }}
+                    disabled={isUpdatingStatus}
                   >
-                    Download Signed PDF
+                    {isUpdatingStatus ? 'Updating Status...' : 'Download Signed PDF'}
                   </button>
                   <button
                     style={{ background: '#e5e7eb', color: '#334155', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
                     onClick={e => { e.preventDefault(); handleClear(); }}
+                    disabled={isUpdatingStatus}
                   >
                     Clear
                   </button>
