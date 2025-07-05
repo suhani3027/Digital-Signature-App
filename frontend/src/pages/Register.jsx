@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import CenteredPage from '../components/CenteredPage';
+import { getApiUrl } from '../utils/env.js';
 
 const Register = ({ setIsAuthenticated }) => {
   const [name, setName] = useState('');
@@ -14,7 +15,7 @@ const Register = ({ setIsAuthenticated }) => {
     e.preventDefault();
     setError('');
     try {
-      const res = await axios.post('/api/auth/register', { name, email, password });
+      const res = await axios.post(getApiUrl('api/auth/register'), { name, email, password });
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('userId', res.data.user.id);
       localStorage.setItem('userName', res.data.user.name);

@@ -6,6 +6,7 @@ import workerSrc from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import CenteredPage from '../components/CenteredPage';
 import { useNavigate } from 'react-router-dom';
 import { FaFileAlt, FaFileSignature, FaFileUpload, FaTrash } from 'react-icons/fa';
+import { getApiUrl } from '../utils/env.js';
 
 // Set the workerSrc to the recommended CDN for react-pdf
 pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
@@ -30,7 +31,7 @@ const DocumentList = () => {
     setError('');
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.get('/api/documents', {
+      const res = await axios.get(getApiUrl('api/documents'), {
         headers: { Authorization: `Bearer ${token}` },
       });
       setDocuments(res.data.documents || []);
@@ -48,7 +49,7 @@ const DocumentList = () => {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`/api/documents/${documentId}`, {
+      await axios.delete(getApiUrl(`api/documents/${documentId}`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       

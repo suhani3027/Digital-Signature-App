@@ -54,7 +54,7 @@ const UploadDocument = () => {
       formData.append('title', title);
       formData.append('document', file);
       const token = localStorage.getItem('token');
-      await axios.post('/api/documents/upload', formData, {
+      await axios.post(getApiUrl('api/documents/upload'), formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${token}`,

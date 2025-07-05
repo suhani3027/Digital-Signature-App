@@ -4,6 +4,7 @@ import CenteredPage from '../components/CenteredPage';
 // import Navbar from '../components/Navbar';
 import { FaFileAlt, FaFileSignature, FaFileUpload } from 'react-icons/fa';
 import axios from 'axios';
+import { getApiUrl } from '../utils/env.js';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ const Dashboard = () => {
       setError('');
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get('/api/documents', {
+        const res = await axios.get(getApiUrl('api/documents'), {
           headers: { Authorization: `Bearer ${token}` },
         });
         setDocuments(res.data.documents || []);

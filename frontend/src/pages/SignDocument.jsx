@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import SignatureModal from '../components/SignatureModal';
 import axios from 'axios';
 import CenteredPage from '../components/CenteredPage';
+import { getApiUrl } from '../utils/env.js';
 
 
 const SignDocument = () => {
@@ -19,7 +20,7 @@ const SignDocument = () => {
       setError('');
       try {
         const token = localStorage.getItem('token');
-        const res = await axios.get(`/api/documents/${documentId}`, {
+        const res = await axios.get(getApiUrl(`api/documents/${documentId}`), {
           headers: { Authorization: `Bearer ${token}` },
         });
         setDocument(res.data.document);
