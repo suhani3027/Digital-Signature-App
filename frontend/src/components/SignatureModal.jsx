@@ -95,9 +95,13 @@ const SignatureModal = ({ open, document: doc }) => {
     setDrawnSignature(null);
     setUploadedSignature(null);
     setShowSignature(false);
-    setPosition({ x: 100, y: 100 });
+    // Don't reset position when clearing signature content
     setIsDrawn(false);
     if (sigCanvasRef.current) sigCanvasRef.current.clear();
+  };
+
+  const handleResetPosition = () => {
+    setPosition({ x: 100, y: 100 });
   };
 
   const handleDraw = () => {
@@ -224,6 +228,14 @@ const SignatureModal = ({ open, document: doc }) => {
     }
   }, [position.x, position.y, renderedHeight]);
 
+  // Persist position when modal opens/closes
+  useEffect(() => {
+    if (open && !showSignature) {
+      // Don't reset position when modal opens, only when signature is not shown
+      // This prevents position reset when switching between signature types
+    }
+  }, [open, showSignature]);
+
   const getPdfFont = () => {
     const found = fontOptions.find(opt => opt.value === fontFamily);
     return found ? found.pdfFont : StandardFonts.Helvetica;
@@ -312,7 +324,16 @@ const SignatureModal = ({ open, document: doc }) => {
               <label style={{ fontWeight: 600, marginBottom: 4, fontSize: '1rem', color: '#334155' }}></label>
               <select
                 value={signatureType}
-                onChange={e => { setSignatureType(e.target.value); handleClear(); }}
+                onChange={e => { 
+                  setSignatureType(e.target.value); 
+                  // Only clear signature content, not position
+                  setSignature('');
+                  setDrawnSignature(null);
+                  setUploadedSignature(null);
+                  setShowSignature(false);
+                  setIsDrawn(false);
+                  if (sigCanvasRef.current) sigCanvasRef.current.clear();
+                }}
                 style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '2px solid #3b82f6', fontSize: '1rem', marginBottom: '0.5rem', background: '#fff', color: '#18181b', boxSizing: 'border-box' }}
               >
                 <option value="" disabled>Signature Type</option>
@@ -490,8 +511,8 @@ const SignatureModal = ({ open, document: doc }) => {
                 >
                   Place Signature
                 </button>
-                {/* Download and Clear buttons side by side, now below Place Signature */}
-                <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem', justifyContent: 'center', alignItems: 'center', marginTop: '1rem' }}>
+                {/* Download, Clear, and Reset Position buttons side by side */}
+                <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem', justifyContent: 'center', alignItems: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
                   <button
                     style={{ background: '#3b82f6', color: '#fff', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
                     onClick={e => { e.preventDefault(); handleDownload(); }}
@@ -503,6 +524,12 @@ const SignatureModal = ({ open, document: doc }) => {
                     onClick={e => { e.preventDefault(); handleClear(); }}
                   >
                     Clear
+                  </button>
+                  <button
+                    style={{ background: '#f59e0b', color: '#fff', padding: '0.75rem 2rem', borderRadius: '0.5rem', border: 'none', fontWeight: 600, fontSize: '1.1rem', cursor: 'pointer' }}
+                    onClick={e => { e.preventDefault(); handleResetPosition(); }}
+                  >
+                    Reset Position
                   </button>
                 </div>
                 {/* Conditional rendering based on signMode */}
