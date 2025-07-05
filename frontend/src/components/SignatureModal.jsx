@@ -51,9 +51,9 @@ const SignatureModal = ({ open, document: doc }) => {
     }),
   }));
 
-  const [, drop] = useDrop(() => ({
+  const [, drop] = useDrop({
     accept: SIGNATURE_DND_TYPE,
-    drop: (monitor) => {
+    drop: (item, monitor) => {
       const clientOffset = monitor.getClientOffset();
       const dropArea = pdfAreaRef.current;
       if (clientOffset && dropArea) {
@@ -66,7 +66,7 @@ const SignatureModal = ({ open, document: doc }) => {
         setPosition({ x, y });
       }
     },
-  }));
+  });
 
   // Custom drag layer for preview
   const { isDragging: isLayerDragging, currentOffset } = useDragLayer((monitor) => ({
