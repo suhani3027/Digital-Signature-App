@@ -557,7 +557,7 @@ const SignatureModal = ({ open, document: doc, onSave }) => {
                         ref={sigCanvasRef}
                         penColor="black"
                         backgroundColor="#fff"
-                        canvasProps={{ width: 300, height: 100, style: { border: '1.5px solid #cbd5e1', borderRadius: '0.375rem', display: 'block', margin: '0 auto', background: '#fff' } }}
+                        canvasProps={{ width: 200, height: 100, style: { border: '1.5px solid #cbd5e1', borderRadius: '0.375rem', display: 'block', margin: '0 auto', background: '#fff' } }}
                         onEnd={handleDraw}
                         disabled={isUpdatingStatus}
                       />

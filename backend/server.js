@@ -29,9 +29,7 @@ app.use(helmet());
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'https://digital-signature-l74tzfxzy-suhani3027s-projects.vercel.app',
-  'https://digital-signature-app-vercel.vercel.app',
-  'https://digital-signature-app.vercel.app'
+  'https://digital-signature-app-nu.vercel.app'
 ];
 
 // Add custom frontend URL if provided
@@ -82,6 +80,11 @@ app.get('/api/health', (req, res) => {
     message: 'Digital Signature API is running',
     timestamp: new Date().toISOString()
   });
+});
+
+// Root route
+app.get('/', (req, res) => {
+  res.send('API is running. Please use the /api endpoints.');
 });
 
 // Error handling middleware
